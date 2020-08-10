@@ -160,11 +160,15 @@ const setupRoutes = routesConfig => {
   }
 
   routesConfig.routes.forEach(r => {
-    let routeComponent = r.component;
+    let routeComponent = r.component
 
     if (r.async) {
       if (isLightningComponent(routeComponent)) {
-        throw new Error("Error registering async route with path '" + r.path + "'. Component property in async routes must be an async factory in the form of () => Promise")
+        throw new Error(
+          "Error registering async route with path '" +
+            r.path +
+            "'. Component property in async routes must be an async factory in the form of () => Promise"
+        )
       }
 
       routeComponent = {
@@ -173,7 +177,7 @@ const setupRoutes = routesConfig => {
       }
     }
 
-    route(r.path, routeComponent || r.hook, r.options);
+    route(r.path, routeComponent || r.hook, r.options)
 
     if (r.widgets) {
       widget(r.path, r.widgets)
@@ -327,7 +331,7 @@ const load = async ({ route, hash }) => {
     if (type.async) {
       // expect the component to have an injected async factory
       const asyncComponent = await type.loader()
-      page = create(asyncComponent || asyncComponent.default)
+      page = create(asyncComponent.default || asyncComponent)
     } else {
       page = create(type)
     }
