@@ -160,7 +160,21 @@ const setupRoutes = routesConfig => {
   }
 
   routesConfig.routes.forEach(r => {
-    route(r.path, r.component || r.hook, r.options)
+    let routeComponent = r.component;
+
+    if (r.async) {
+      if (isLightningComponent(routeComponent)) {
+        throw new Error("Error registering async route with path '" + r.path + "'. Component property in async routes must be an async factory in the form of () => Promise")
+      }
+
+      routeComponent = {
+        async: true,
+        loader: r.component,
+      }
+    }
+
+    route(r.path, routeComponent || r.hook, r.options);
+
     if (r.widgets) {
       widget(r.path, r.widgets)
     }
@@ -287,7 +301,7 @@ const load = async ({ route, hash }) => {
   let isCreated = false
 
   // if page is instanceof Component
-  if (!isLightningComponent(type)) {
+  if (!type.async && !isLightningComponent(type)) {
     page = type
     // if we have have a data route for current page
     if (providers.has(route)) {
@@ -310,7 +324,14 @@ const load = async ({ route, hash }) => {
       routesShareInstance = true
     }
   } else {
-    page = create(type)
+    if (type.async) {
+      // expect the component to have an injected async factory
+      const asyncComponent = await type.loader()
+      page = create(asyncComponent || asyncComponent.default)
+    } else {
+      page = create(type)
+    }
+
     pagesHost.a(page)
 
     // update stack
@@ -711,7 +732,7 @@ const getPageFromStack = route => {
   }
 
   for (let i = 0, j = stack.length; i < j; i++) {
-    if (isPage(stack[i], stage)) {
+    if (stack[i].async || isPage(stack[i], stage)) {
       index = i
       item = stack[i]
       break
@@ -899,7 +920,7 @@ const handleHashChange = override => {
       let n = stored.length
       while (n--) {
         const type = stored[n]
-        if (isPage(type, stage)) {
+        if (type.async || isPage(type, stage)) {
           load({ route, hash }).then(() => {
             app._refocus()
           })
